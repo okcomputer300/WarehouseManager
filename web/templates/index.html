@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Manager</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            margin: 40px; 
+            background-color: #f4f4f9; 
+            color: #333;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+            background: white; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #007BFF; 
+            color: white; 
+        }
+        tr:nth-child(even) { 
+            background-color: #f9f9f9; 
+        }
+        .tag { 
+            display: inline-block; 
+            background: #ffc107; 
+            color: #212529; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            font-weight: bold; 
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Inventory Items List</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Item Name</th>
+                <th>Quantity</th>
+                <th>Storage Location</th>
+                <th>Description</th>
+                <th>Tags</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .}}
+            <tr>
+                <td>{{.ID}}</td>
+                <td><strong>{{.Name}}</strong></td>
+                <td>{{.Amount}} st.</td>
+                <td>
+                    {{if .LocationName}}{{.LocationName}}{{else}}Unassigned{{end}}
+                </td>
+                <td>
+                    {{if .Description}}{{.Description}}{{else}}—{{end}}
+                </td>
+                <td>
+                    {{if .TagName.Valid}}
+                        <span class="tag">{{.TagName.String}}</span>
+                    {{else}}
+                        —
+                    {{end}}
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="6" style="text-align: center;">No items found in the database.</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+
+</body>
+</html>

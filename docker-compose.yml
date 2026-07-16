@@ -1,10 +1,20 @@
 services:
   web:
-    context: ./src/web
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     container_name: web
     ports:
       - "8080:8080"
     restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - .env
     deploy:
       resources:
         limits:
@@ -18,12 +28,36 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-    
-  db: 
+
+  db:
     image: mysql:8.0
     container_name: web-db
     restart: always
     environment:
-      - MYSQL_DATABASE: ${DB_NAME}
-      - MYSQL_USER: ${DB_USER}
-      - MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: '512M'
+        reservations:
+          memory: '128M'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    env_file:
+      - .env
+
+volumes:
+  mysql_data:
