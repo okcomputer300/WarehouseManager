@@ -40,7 +40,7 @@
                 <article class="card item-card" data-name="{{.Name}}" data-location="{{.LocationName}}" data-tag="{{if .TagName.Valid}}{{.TagName.String}}{{end}}">
                     <div class="card-top">
                         <div class="image-wrap">
-                            <img src="/static/pics/{{.Name}}.jpg" alt="{{.Name}}" onerror="this.style.display='none'; this.parentElement.classList.add('fallback');" />
+                            <img class="gallery-image" src="/static/pics/{{.Name}}.jpg" alt="{{.Name}}" role="button" tabindex="0" aria-label="Bild von {{.Name}} vergrößern" onerror="this.style.display='none'; this.parentElement.classList.add('fallback');" />
                         </div>
                         <div class="card-copy">
                             <h3>{{.Name}}</h3>
@@ -79,7 +79,9 @@
                             <p>{{if .Description}}{{.Description}}{{else}}Beschreibung folgt bald.{{end}}</p>
                         </div>
                     </div>
-                    <div class="map-preview">Karte folgt</div>
+                    <div class="image-wrap">
+                            <img class="gallery-image" src="/static/pics/{{.Name}}.png" alt="{{.Name}}" role="button" tabindex="0" aria-label="Bild von {{.Name}} vergrößern" onerror="this.style.display='none'; this.parentElement.classList.add('fallback');" />
+                        </div>
                 </article>
                 {{else}}
                 <div class="empty-state">Keine Orte gefunden.</div>
@@ -95,6 +97,14 @@
         </label>
     </div>
 
+    <div id="image-modal" class="image-modal" role="dialog" aria-modal="true" aria-label="Bild vergrößern" hidden>
+        <div class="image-modal__content">
+            <button type="button" class="image-modal__close" aria-label="Schließen">×</button>
+            <img id="image-modal-image" src="" alt="" />
+            <p id="image-modal-caption"></p>
+        </div>
+    </div>
+
     <script id="tag-data" type="application/json">{{.TagsJSON}}</script>
     <script>
         const tabs = document.querySelectorAll('.tab');
@@ -104,6 +114,58 @@
         };
         const searchInput = document.getElementById('mobile-search');
         const availableTags = JSON.parse(document.getElementById('tag-data').textContent || '[]').filter((tag) => typeof tag === 'string');
+        const imageModal = document.getElementById('image-modal');
+        const imageModalImage = document.getElementById('image-modal-image');
+        const imageModalCaption = document.getElementById('image-modal-caption');
+
+        function openImageModal(src, alt) {
+            if (!imageModal || !imageModalImage) return;
+            imageModalImage.src = src;
+            imageModalImage.alt = alt;
+            imageModalCaption.textContent = alt;
+            imageModal.hidden = false;
+            document.body.classList.add('modal-open');
+            requestAnimationFrame(() => {
+                imageModal.classList.add('is-open');
+            });
+        }
+
+        function closeImageModal() {
+            if (!imageModal) return;
+            imageModal.classList.remove('is-open');
+            document.body.classList.remove('modal-open');
+            setTimeout(() => {
+                if (imageModal.classList.contains('is-open')) {
+                    return;
+                }
+                imageModal.hidden = true;
+                imageModalImage.removeAttribute('src');
+                imageModalImage.alt = '';
+                imageModalCaption.textContent = '';
+            }, 220);
+        }
+
+        document.querySelectorAll('.gallery-image').forEach((image) => {
+            image.addEventListener('click', () => openImageModal(image.getAttribute('src') || '', image.alt || 'Bild'));
+            image.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openImageModal(image.getAttribute('src') || '', image.alt || 'Bild');
+                }
+            });
+        });
+
+        document.querySelector('.image-modal__close')?.addEventListener('click', closeImageModal);
+        imageModal?.addEventListener('click', (event) => {
+            if (event.target === imageModal) {
+                closeImageModal();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !imageModal?.hidden) {
+                closeImageModal();
+            }
+        });
 
         tabs.forEach((tab) => {
             tab.addEventListener('click', () => {
