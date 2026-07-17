@@ -33,6 +33,7 @@ func ResolveTemplatePath() string {
 }
 
 func ListItemsHandler(w http.ResponseWriter, r *http.Request) {
+	searchTerm := r.URL.Query().Get("search")
 	query := `
         SELECT 
             i.id, i.name, i.location_id, i.amount, i.description, 
@@ -42,15 +43,29 @@ func ListItemsHandler(w http.ResponseWriter, r *http.Request) {
         LEFT JOIN locations l ON i.location_id = l.id
         LEFT JOIN tags t ON i.tag_id = t.id
     `
-	rows, err := database.DB.Query(query)
+
+	var rows *sql.Rows
+	var err error
+
+	if searchTerm != "" {
+		query += ` WHERE i.name LIKE ?
+					  OR i.description LIKE ?
+					  OR i.name LIKE ?
+					  OR t.name LIKE ?`
+
+		searchParam := "%" + searchTerm + "%"
+
+		rows, err = database.DB.Query(query, searchParam, searchParam, searchParam, searchParam)
+	} else {
+		rows, err = database.DB.Query(query)
+	}
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 	defer rows.Close()
 
 	var items []models.Item
-
 	for rows.Next() {
 		var item models.Item
 		err := rows.Scan(&item.ID, &item.Name, &item.LocationID, &item.Amount, &item.Description, &item.LocationName, &item.TagID, &item.TagName)
@@ -69,7 +84,15 @@ func ListItemsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tmpl.Execute(w, items)
+	data := struct {
+		Items  []models.Item
+		Search string
+	}{
+		Items:  items,
+		Search: searchTerm,
+	}
+
+	err = tmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, "Template execution error: "+err.Error(), http.StatusInternalServerError)
 		return

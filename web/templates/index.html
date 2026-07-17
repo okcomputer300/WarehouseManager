@@ -4,19 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warehouse Manager</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <style>
         body { 
             font-family: sans-serif; 
-            margin: 40px; 
+            margin: 20px; 
             background-color: #f4f4f9; 
             color: #333;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 14px;
+            font-size: 16px; 
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus {
+            border-color: #007BFF;
+        }
+        /* Обертка для адаптивности таблицы на телефонах */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-top: 20px; 
             background: white; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
         }
         th, td { 
             border: 1px solid #ddd; 
@@ -45,44 +69,62 @@
 
     <h1>Inventory Items List</h1>
     
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Item Name</th>
-                <th>Quantity</th>
-                <th>Storage Location</th>
-                <th>Description</th>
-                <th>Tags</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{range .}}
-            <tr>
-                <td>{{.ID}}</td>
-                <td><strong>{{.Name}}</strong></td>
-                <td>{{.Amount}} st.</td>
-                <td>
-                    {{if .LocationName}}{{.LocationName}}{{else}}Unassigned{{end}}
-                </td>
-                <td>
-                    {{if .Description}}{{.Description}}{{else}}—{{end}}
-                </td>
-                <td>
-                    {{if .TagName.Valid}}
-                        <span class="tag">{{.TagName.String}}</span>
-                    {{else}}
-                        —
-                    {{end}}
-                </td>
-            </tr>
-            {{else}}
-            <tr>
-                <td colspan="6" style="text-align: center;">No items found in the database.</td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
+    <div class="search-container">
+        <input 
+            type="text" 
+            name="search" 
+            class="search-input"
+            value="{{ .Search }}" 
+            placeholder="Type to search items, locations, or tags..." 
+            
+            /* Магия HTMX: */
+            hx-get="/" 
+            hx-trigger="keyup changed delay:200ms, search" 
+            hx-target="#items-table-body" 
+            hx-select="#items-table-body tr"
+        >
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Pic</th>
+                    <th>ID</th>
+                    <th>Item Name</th>
+                    <th>Quantity</th>
+                    <th>Storage Location</th>
+                    <th>Description</th>
+                    <th>Tags</th>
+                </tr>
+            </thead>
+            <tbody id="items-table-body">
+                {{range .Items}}
+                <tr>
+                    <td>
+                    <img src="/static/pics/{{.Name}}.jpg" alt="{{.Name}}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                    </td>
+                    <td>{{.ID}}</td>
+                    <td><strong>{{.Name}}</strong></td>
+                    <td>{{.Amount}} st.</td>
+                    <td>
+                        {{if .LocationName}}{{.LocationName}}{{else}}Unassigned{{end}}
+                    </td>
+                    <td>
+                        {{if .Description}}{{.Description}}{{else}}—{{end}}
+                    </td>
+                    <td>
+                        {{if .TagName.Valid}}<span class="tag">{{.TagName.String}}</span>{{else}}—{{end}}
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6" style="text-align: center;">No items found.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
 
 </body>
 </html>

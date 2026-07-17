@@ -22,10 +22,19 @@ CREATE TABLE IF NOT EXISTS items (
 
 
 INSERT INTO locations (name, description) VALUES
-('Untere Lager', 'Lager neben dem Gebäudeeingang mit Schlagzeugen');
+('Untere Lager', 'Lager neben dem Gebäudeeingang mit Schlagzeugen'),
+('Shoplager', 'Lager neben christian stein'),
+('Getränkelager', 'Lager mit Getränke in Nirvana');
 
 INSERT INTO tags (name) VALUES
-('Reserviert');
+('Reserviert'),
+('Kann weg'),
+('Wird gebraucht');
 
 INSERT INTO items (name, location_id, amount, description, tag_id) VALUES
-('Papiertuch', '1', '18', 'Papiertuch also', '1');  
+('Papiertuch', 1, 18, 'Papiertuch also', 1),
+('Skeleton Head', 1, 2, 'Skeleton Head für Deko', 2),
+('Club-Mate', 3, 32, 'club matte mag ich nicht', NULL),
+('Rasberry Pi 4', 2, 4, 'Rasberry PI 4 4 gb ram', 3),
+('Lenovo Laptop', 2, 1, 'ThinkPad Lenovo', 2);
+
