@@ -3,8 +3,9 @@ package models
 import "database/sql"
 
 type Location struct {
-	ID   int
-	Name string
+	ID          int
+	Name        string
+	Description string
 }
 
 type Tag struct {
@@ -21,4 +22,8 @@ type Item struct {
 	LocationName string
 	TagID        sql.NullInt64
 	TagName      sql.NullString
+}
+
+func (i Item) HasTag() bool {
+	return i.TagID.Valid && i.TagID.Int64 > 0
 }

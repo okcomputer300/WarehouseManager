@@ -56,6 +56,7 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.HandleFunc("/", handlers.ListItemsHandler)
+	http.HandleFunc("/modify-item", handlers.ModifyItemHandler)
 
 	log.Println("server works on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

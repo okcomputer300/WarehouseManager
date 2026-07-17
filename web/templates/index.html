@@ -1,130 +1,366 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warehouse Manager</title>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <style>
-        body { 
-            font-family: sans-serif; 
-            margin: 20px; 
-            background-color: #f4f4f9; 
-            color: #333;
-        }
-        .search-container {
-            margin-bottom: 20px;
-        }
-        .search-input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 14px;
-            font-size: 16px; 
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .search-input:focus {
-            border-color: #007BFF;
-        }
-        /* Обертка для адаптивности таблицы на телефонах */
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            background: white; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        th, td { 
-            border: 1px solid #ddd; 
-            padding: 12px; 
-            text-align: left; 
-        }
-        th { 
-            background-color: #007BFF; 
-            color: white; 
-        }
-        tr:nth-child(even) { 
-            background-color: #f9f9f9; 
-        }
-        .tag { 
-            display: inline-block; 
-            background: #ffc107; 
-            color: #212529; 
-            padding: 4px 8px; 
-            border-radius: 4px; 
-            font-size: 12px; 
-            font-weight: bold; 
-        }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Lagermanager</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
+    <div class="phone-shell">
+        <header class="top-bar">
+            <div>
+                <h1>Lagermanager</h1>
+            </div>
+            <div class="pill">NETWAYS</div>
+        </header>
 
-    <h1>Inventory Items List</h1>
-    
-    <div class="search-container">
-        <input 
-            type="text" 
-            name="search" 
-            class="search-input"
-            value="{{ .Search }}" 
-            placeholder="Type to search items, locations, or tags..." 
-            
-            /* Магия HTMX: */
-            hx-get="/" 
-            hx-trigger="keyup changed delay:200ms, search" 
-            hx-target="#items-table-body" 
-            hx-select="#items-table-body tr"
-        >
-    </div>
+        <nav class="tab-row" role="tablist" aria-label="Ansichten">
+            <button class="tab active" data-view="items" aria-selected="true">Alle Dinge</button>
+            <button class="tab" data-view="locations" aria-selected="false">Orte</button>
+        </nav>
 
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>Pic</th>
-                    <th>ID</th>
-                    <th>Item Name</th>
-                    <th>Quantity</th>
-                    <th>Storage Location</th>
-                    <th>Description</th>
-                    <th>Tags</th>
-                </tr>
-            </thead>
-            <tbody id="items-table-body">
+        <section class="section-card preview-card">
+            <p class="section-label">Übersicht</p>
+            <div class="overview-grid">
+                <div>
+                    <strong>{{len .Items}}</strong>
+                    <span>Artikel</span>
+                </div>
+                <div>
+                    <strong>{{len .Locations}}</strong>
+                    <span>Orte</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-area">
+            <div class="list-section" id="items-section">
                 {{range .Items}}
-                <tr>
-                    <td>
-                    <img src="/static/pics/{{.Name}}.jpg" alt="{{.Name}}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
-                    </td>
-                    <td>{{.ID}}</td>
-                    <td><strong>{{.Name}}</strong></td>
-                    <td>{{.Amount}} st.</td>
-                    <td>
-                        {{if .LocationName}}{{.LocationName}}{{else}}Unassigned{{end}}
-                    </td>
-                    <td>
-                        {{if .Description}}{{.Description}}{{else}}—{{end}}
-                    </td>
-                    <td>
-                        {{if .TagName.Valid}}<span class="tag">{{.TagName.String}}</span>{{else}}—{{end}}
-                    </td>
-                </tr>
+                <article class="card item-card" data-name="{{.Name}}" data-location="{{.LocationName}}" data-tag="{{if .TagName.Valid}}{{.TagName.String}}{{end}}">
+                    <div class="card-top">
+                        <div class="image-wrap">
+                            <img src="/static/pics/{{.Name}}.jpg" alt="{{.Name}}" onerror="this.style.display='none'; this.parentElement.classList.add('fallback');" />
+                        </div>
+                        <div class="card-copy">
+                            <h3>{{.Name}}</h3>
+                            <p>{{if .LocationName}}{{.LocationName}}{{else}}Kein Ort zugewiesen{{end}}</p>
+                        </div>
+                    </div>
+                    <div class="meta-row">
+                        <span class="count qty-display">{{.Amount}} Stück</span>
+                        <div class="quantity-controls">
+                            <button type="button" class="qty-btn minus" data-item-id="{{.ID}}" data-action="decrease" data-amount="1" aria-label="Menge reduzieren">−</button>
+                            <button type="button" class="qty-btn plus" data-item-id="{{.ID}}" data-action="increase" data-amount="1" aria-label="Menge erhöhen">+</button>
+                        </div>
+                        <div class="tag-controls">
+                            {{if .TagName.Valid}}
+                            <span class="badge tag-badge">{{.TagName.String}}</span>
+                            <button type="button" class="tag-action" data-item-id="{{.ID}}" data-action="clear-tag">Entfernen</button>
+                            {{else}}
+                            <button type="button" class="tag-action" data-item-id="{{.ID}}" data-action="tag">Taggen</button>
+                            {{end}}
+                        </div>
+                    </div>
+                    <p class="description">{{if .Description}}{{.Description}}{{else}}Keine Beschreibung vorhanden.{{end}}</p>
+                </article>
                 {{else}}
-                <tr>
-                    <td colspan="6" style="text-align: center;">No items found.</td>
-                </tr>
+                <div class="empty-state">Keine Artikel gefunden.</div>
                 {{end}}
-            </tbody>
-        </table>
+            </div>
+
+            <div class="list-section hidden" id="locations-section">
+                {{range .Locations}}
+                <article class="card location-card" data-name="{{.Name}}" data-description="{{.Description}}">
+                    <div class="card-top">
+                        <div class="avatar">◎</div>
+                        <div>
+                            <h3>{{.Name}}</h3>
+                            <p>{{if .Description}}{{.Description}}{{else}}Beschreibung folgt bald.{{end}}</p>
+                        </div>
+                    </div>
+                    <div class="map-preview">Karte folgt</div>
+                </article>
+                {{else}}
+                <div class="empty-state">Keine Orte gefunden.</div>
+                {{end}}
+            </div>
+        </section>
+
+        <label class="search-bar" for="mobile-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 0 8.5 8.5" />
+            </svg>
+            <input id="mobile-search" type="search" placeholder="Suchen…" value="{{.Search}}" />
+        </label>
     </div>
 
+    <script id="tag-data" type="application/json">{{.TagsJSON}}</script>
+    <script>
+        const tabs = document.querySelectorAll('.tab');
+        const sections = {
+            items: document.getElementById('items-section'),
+            locations: document.getElementById('locations-section')
+        };
+        const searchInput = document.getElementById('mobile-search');
+        const availableTags = JSON.parse(document.getElementById('tag-data').textContent || '[]').filter((tag) => typeof tag === 'string');
+
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                tabs.forEach((button) => {
+                    button.classList.remove('active');
+                    button.setAttribute('aria-selected', 'false');
+                });
+
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+
+                Object.values(sections).forEach((section) => section.classList.add('hidden'));
+                sections[tab.dataset.view].classList.remove('hidden');
+                filterCards();
+            });
+        });
+
+        function filterCards() {
+            const query = searchInput.value.trim().toLowerCase();
+            const activeView = document.querySelector('.tab.active').dataset.view;
+            const activeSection = sections[activeView];
+            const cards = activeSection.querySelectorAll('.card');
+
+            cards.forEach((card) => {
+                const haystack = `${card.dataset.name || ''} ${card.dataset.location || ''} ${card.dataset.description || ''} ${card.dataset.tag || ''}`.toLowerCase();
+                card.classList.toggle('hidden-card', query !== '' && !haystack.includes(query));
+            });
+        }
+
+        searchInput.addEventListener('input', filterCards);
+
+        document.querySelectorAll('.qty-btn').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const formData = new URLSearchParams();
+                formData.append('id', button.dataset.itemId);
+                formData.append('action', button.dataset.action);
+                formData.append('amount', button.dataset.amount || '1');
+
+                try {
+                    const response = await fetch('/modify-item', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData.toString()
+                    });
+
+                    if (!response.ok) {
+                        return;
+                    }
+
+                    const result = await response.json();
+                    const card = button.closest('.item-card');
+                    const display = card?.querySelector('.qty-display');
+                    if (display) {
+                        display.textContent = `${result.amount} Stück`;
+                    }
+                } catch (error) {
+                    console.error('Could not update quantity:', error);
+                }
+            });
+        });
+
+        function closeTagPopover() {
+            document.querySelectorAll('.tag-popover.open').forEach((popover) => popover.remove());
+        }
+
+        function positionPopover(popover, anchorEl) {
+            const rect = anchorEl.getBoundingClientRect();
+            const width = Math.min(window.innerWidth - 16, 260);
+            let left = rect.right - width;
+            left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+
+            let top = rect.bottom + 8;
+            const maxHeight = 280;
+            if (top + maxHeight > window.innerHeight - 8) {
+                top = rect.top - maxHeight - 8;
+            }
+            if (top < 8) {
+                top = 8;
+            }
+
+            popover.style.width = `${width}px`;
+            popover.style.left = `${left}px`;
+            popover.style.top = `${top}px`;
+        }
+
+        function renderTagControls(wrapper, itemId, tagName) {
+            wrapper.innerHTML = '';
+
+            if (tagName) {
+                const badge = document.createElement('span');
+                badge.className = 'badge tag-badge';
+                badge.textContent = tagName;
+
+                const clearButton = document.createElement('button');
+                clearButton.type = 'button';
+                clearButton.className = 'tag-action';
+                clearButton.dataset.itemId = itemId;
+                clearButton.dataset.action = 'clear-tag';
+                clearButton.textContent = 'Entfernen';
+                clearButton.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    const formData = new URLSearchParams();
+                    formData.append('id', itemId);
+                    formData.append('action', 'clear-tag');
+
+                    try {
+                        const response = await fetch('/modify-item', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: formData.toString()
+                        });
+                        if (response.ok) {
+                            renderTagControls(wrapper, itemId, '');
+                        }
+                    } catch (error) {
+                        console.error('Could not clear tag:', error);
+                    }
+                });
+
+                wrapper.appendChild(badge);
+                wrapper.appendChild(clearButton);
+                return;
+            }
+
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'tag-action';
+            addButton.dataset.itemId = itemId;
+            addButton.dataset.action = 'tag';
+            addButton.textContent = 'Taggen';
+            addButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                closeTagPopover();
+
+                const popover = document.createElement('div');
+                popover.className = 'tag-popover';
+
+                const options = availableTags.map((tag) => `<button type="button" class="tag-option" data-tag="${tag}">${tag}</button>`).join('');
+                popover.innerHTML = `
+                    <div class="tag-popover-card">
+                        <div class="tag-popover-title">Tag wählen</div>
+                        <div class="tag-option-list">${options}</div>
+                        <div class="tag-popover-footer">
+                            <input class="tag-input" type="text" placeholder="Neuer Tag" />
+                            <button type="button" class="tag-save">Speichern</button>
+                        </div>
+                    </div>
+                `;
+
+                wrapper.innerHTML = '';
+                wrapper.appendChild(addButton);
+                document.body.appendChild(popover);
+                positionPopover(popover, addButton);
+                popover.classList.add('open');
+
+                const optionButtons = popover.querySelectorAll('.tag-option');
+                optionButtons.forEach((optionButton) => {
+                    optionButton.addEventListener('click', async (event) => {
+                        event.stopPropagation();
+                        const chosenTag = optionButton.dataset.tag;
+                        if (!chosenTag) {
+                            return;
+                        }
+                        await saveTag(itemId, chosenTag, wrapper);
+                    });
+                });
+
+                const input = popover.querySelector('.tag-input');
+                const saveButton = popover.querySelector('.tag-save');
+                saveButton.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    const chosenTag = input.value.trim();
+                    if (!chosenTag) {
+                        return;
+                    }
+                    await saveTag(itemId, chosenTag, wrapper);
+                });
+
+                input.focus();
+            });
+
+            wrapper.appendChild(addButton);
+        }
+
+        async function saveTag(itemId, tagName, wrapper) {
+            const formData = new URLSearchParams();
+            formData.append('id', itemId);
+            formData.append('action', 'tag');
+            formData.append('tag', tagName);
+
+            try {
+                const response = await fetch('/modify-item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.ok) {
+                        closeTagPopover();
+                        renderTagControls(wrapper, itemId, result.tag);
+                    }
+                }
+            } catch (error) {
+                console.error('Could not assign tag:', error);
+            }
+        }
+
+        document.querySelectorAll('.tag-controls').forEach((wrapper) => {
+            const button = wrapper.querySelector('.tag-action');
+            if (!button) {
+                return;
+            }
+
+            const itemId = button.dataset.itemId;
+            const action = button.dataset.action;
+            if (action === 'tag') {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    renderTagControls(wrapper, itemId, '');
+                    const pickerButton = wrapper.querySelector('.tag-action');
+                    pickerButton.click();
+                });
+            } else if (action === 'clear-tag') {
+                button.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    const formData = new URLSearchParams();
+                    formData.append('id', itemId);
+                    formData.append('action', 'clear-tag');
+
+                    try {
+                        const response = await fetch('/modify-item', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: formData.toString()
+                        });
+                        if (response.ok) {
+                            renderTagControls(wrapper, itemId, '');
+                        }
+                    } catch (error) {
+                        console.error('Could not clear tag:', error);
+                    }
+                });
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.tag-controls') && !event.target.closest('.tag-popover')) {
+                closeTagPopover();
+            }
+        });
+
+        filterCards();
+    </script>
 </body>
 </html>

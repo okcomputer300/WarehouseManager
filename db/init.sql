@@ -32,9 +32,9 @@ INSERT INTO tags (name) VALUES
 ('Wird gebraucht');
 
 INSERT INTO items (name, location_id, amount, description, tag_id) VALUES
-('Papiertuch', 1, 18, 'Papiertuch also', 1),
-('Skeleton Head', 1, 2, 'Skeleton Head für Deko', 2),
+('Papiertuch', 1, 18, 'Papiertuch also', NULL),
+('Skeleton Head', 1, 2, 'Skeleton Head für Deko', NULL),
 ('Club-Mate', 3, 32, 'club matte mag ich nicht', NULL),
-('Rasberry Pi 4', 2, 4, 'Rasberry PI 4 4 gb ram', 3),
-('Lenovo Laptop', 2, 1, 'ThinkPad Lenovo', 2);
+('Rasberry Pi 4', 2, 4, 'Rasberry PI 4 4 gb ram', NULL),
+('Lenovo Laptop', 2, 1, 'ThinkPad Lenovo', NULL);
 
