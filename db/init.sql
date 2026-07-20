@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS items (
     amount INT,
     description TEXT,
     tag_id INT,
+    photo_path VARCHAR(255) NUll,
     FOREIGN KEY (location_id) REFERENCES locations(id),
     FOREIGN KEY (tag_id) REFERENCES tags(id)
 );

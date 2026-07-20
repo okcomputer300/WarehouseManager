@@ -22,8 +22,13 @@ type Item struct {
 	LocationName string
 	TagID        sql.NullInt64
 	TagName      sql.NullString
+	PhotoPath    sql.NullString
 }
 
 func (i Item) HasTag() bool {
 	return i.TagID.Valid && i.TagID.Int64 > 0
+}
+
+func (i Item) HasPhoto() bool {
+	return i.PhotoPath.Valid && i.PhotoPath.String != ""
 }

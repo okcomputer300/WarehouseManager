@@ -3,7 +3,9 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html/template"
+	"io"
 	"lagermanager/internal/database"
 	"lagermanager/internal/models"
 	"log"
@@ -11,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -34,13 +37,32 @@ func ResolveTemplatePath() string {
 	return candidates[0]
 }
 
+func resolveStaticDir() string {
+	candidates := []string{
+		filepath.Join("web", "static"),
+		filepath.Join("static"),
+		"/app/web/static",
+		"/app/static",
+	}
+
+	for _, candidate := range candidates {
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate
+		}
+	}
+
+	return candidates[0]
+}
+
 func ListItemsHandler(w http.ResponseWriter, r *http.Request) {
 	searchTerm := r.URL.Query().Get("search")
+	added := r.URL.Query().Get("added") == "1"
 	query := `
         SELECT
             i.id, i.name, i.location_id, i.amount, i.description,
             l.name AS location_name,
-            i.tag_id, t.name AS tag_name
+            i.tag_id, t.name AS tag_name,
+            i.photo_path
         FROM items i
         LEFT JOIN locations l ON i.location_id = l.id
         LEFT JOIN tags t ON i.tag_id = t.id
@@ -70,7 +92,7 @@ func ListItemsHandler(w http.ResponseWriter, r *http.Request) {
 	var items []models.Item
 	for rows.Next() {
 		var item models.Item
-		err := rows.Scan(&item.ID, &item.Name, &item.LocationID, &item.Amount, &item.Description, &item.LocationName, &item.TagID, &item.TagName)
+		err := rows.Scan(&item.ID, &item.Name, &item.LocationID, &item.Amount, &item.Description, &item.LocationName, &item.TagID, &item.TagName, &item.PhotoPath)
 		if err != nil {
 			log.Println("error scanning item:", err)
 			continue
@@ -138,12 +160,14 @@ func ListItemsHandler(w http.ResponseWriter, r *http.Request) {
 		Tags      []models.Tag
 		TagsJSON  template.JS
 		Search    string
+		Added     bool
 	}{
 		Items:     items,
 		Locations: locations,
 		Tags:      tags,
 		TagsJSON:  template.JS(tagsJSON),
 		Search:    searchTerm,
+		Added:     added,
 	}
 
 	err = tmpl.Execute(w, data)
@@ -267,4 +291,98 @@ func ModifyItemHandler(w http.ResponseWriter, r *http.Request) {
 		"ok":     true,
 		"amount": newAmount,
 	})
+}
+
+func AddItemHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	amountStr := r.FormValue("amount")
+	description := r.FormValue("description")
+	locationIDStr := r.FormValue("location_id")
+
+	if name == "" || amountStr == "" {
+		http.Error(w, "Missing required fiels", http.StatusBadRequest)
+		return
+	}
+
+	amount, err := strconv.Atoi(amountStr)
+	if err != nil || amount < 0 {
+		http.Error(w, "Invalid amount", http.StatusBadRequest)
+		return
+	}
+
+	locationID, err := strconv.Atoi(locationIDStr)
+	if err != nil || locationID <= 0 {
+		http.Error(w, "Invalid location", http.StatusBadRequest)
+		return
+	}
+
+	var exists int
+	if err := database.DB.QueryRow(`SELECT COUNT(*) FROM locations WHERE id = ?`, locationID).Scan(&exists); err != nil {
+		log.Println("Error checking location:", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if exists == 0 {
+		http.Error(w, "Unknown location", http.StatusBadRequest)
+		return
+	}
+
+	var PhotoPath string
+	file, header, err := r.FormFile("photo")
+	if err == nil {
+		defer file.Close()
+
+		uploadsDir := filepath.Join(resolveStaticDir(), "uploads")
+		if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+			log.Println("Error creating uploads dir:", err)
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
+
+		ext := filepath.Ext(header.Filename)
+		filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+		dstPath := filepath.Join(uploadsDir, filename)
+
+		dst, err := os.Create(dstPath)
+		if err != nil {
+			log.Println("Error saving photo:", err)
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
+		defer dst.Close()
+
+		if _, err := io.Copy(dst, file); err != nil {
+			log.Println("Error writing photo:", err)
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
+
+		PhotoPath = "/static/uploads/" + filename
+	} else if err != http.ErrMissingFile {
+		log.Println("Error reading photo:", err)
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = database.DB.Exec(
+		`INSERT INTO items (name, location_id, amount, description, photo_path) VALUES (?, ?, ?, ?, ?)`,
+		name, locationID, amount, description, sql.NullString{String: PhotoPath, Valid: PhotoPath != ""},
+	)
+	if err != nil {
+		log.Println("Error inserting item:", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/?added=1", http.StatusSeeOther)
 }

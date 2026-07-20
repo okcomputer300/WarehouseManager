@@ -12,7 +12,10 @@
             <div>
                 <h1>Lagermanager</h1>
             </div>
-            <div class="pill">NETWAYS</div>
+            <div class="top-bar-actions">
+                <button type="button" class="action-pill" id="open-add-item" aria-expanded="false">＋ Neu</button>
+                <div class="pill">NETWAYS</div>
+            </div>
         </header>
 
         <nav class="tab-row" role="tablist" aria-label="Ansichten">
@@ -34,13 +37,69 @@
             </div>
         </section>
 
+        {{if .Added}}
+        <div class="success-banner">Artikel wurde erfolgreich gespeichert.</div>
+        {{end}}
+
+        <div class="add-item-drawer" id="add-item-drawer" hidden>
+            <div class="add-item-panel" role="dialog" aria-modal="true" aria-label="Neuen Artikel anlegen">
+                <div class="sheet-handle" aria-hidden="true"></div>
+                <div class="add-item-header">
+                    <div class="sheet-intro">
+                        <p class="section-label">Neuer Artikel</p>
+                        <h2>Etwas Neues einchecken</h2>
+                        <p class="sheet-subtitle">Schnell ergänzen, damit der ganze Bestand sichtbar ist.</p>
+                    </div>
+                    <button type="button" class="drawer-close" id="close-add-item" aria-label="Schließen">×</button>
+                </div>
+                <form class="add-item-form" action="/add-item" method="post" enctype="multipart/form-data">
+                    <div class="add-item-grid">
+                        <div class="field field-card field-card--wide">
+                            <label for="item-name">Name</label>
+                            <input id="item-name" name="name" type="text" placeholder="z. B. Kabelbinder" required />
+                        </div>
+                        <div class="form-row">
+                            <div class="field field-card">
+                                <label for="item-amount">Menge</label>
+                                <input id="item-amount" name="amount" type="number" min="0" step="1" value="1" required />
+                            </div>
+                            <div class="field field-card">
+                                <label for="item-location">Ort</label>
+                                <select id="item-location" name="location_id" required>
+                                    {{range .Locations}}
+                                    <option value="{{.ID}}">{{.Name}}</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field field-card">
+                            <label for="item-description">Beschreibung</label>
+                            <textarea id="item-description" name="description" placeholder="Kurz beschreiben, was es ist und wo es gebraucht wird"></textarea>
+                        </div>
+                        <div class="field field-card">
+                            <div class="photo-uploader">
+                                <input id="item-photo" name="photo" type="file" accept="image/*" hidden />
+                                <label for="item-photo" class="photo-uploader__label">
+                                    <span class="photo-uploader__icon">📷</span>
+                                    <span class="photo-uploader__text">Foto hinzufügen</span>
+                                    <small>Optional • wird im Lager sichtbar gespeichert</small>
+                                </label>
+                                <div id="photo-preview" class="photo-preview" hidden></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="add-item-submit" type="submit">Speichern</button>
+                </form>
+            </div>
+        </div>
+
         <section class="content-area">
             <div class="list-section" id="items-section">
                 {{range .Items}}
                 <article class="card item-card" data-name="{{.Name}}" data-location="{{.LocationName}}" data-tag="{{if .TagName.Valid}}{{.TagName.String}}{{end}}">
                     <div class="card-top">
                         <div class="image-wrap">
-                            <img class="gallery-image" src="/static/pics/{{.Name}}.jpg" alt="{{.Name}}" role="button" tabindex="0" aria-label="Bild von {{.Name}} vergrößern" onerror="this.style.display='none'; this.parentElement.classList.add('fallback');" />
+                            <img class="gallery-image" src="{{if .HasPhoto}}{{.PhotoPath.String}}{{else}}/static/pics/{{.Name}}.jpg{{end}}" alt="{{.Name}}" role="button" tabindex="0" aria-label="Bild von {{.Name}} vergrößern" onerror="this.style.display='none'; this.parentElement.classList.add('fallback');" />
                         </div>
                         <div class="card-copy">
                             <h3>{{.Name}}</h3>
@@ -108,6 +167,9 @@
     <script id="tag-data" type="application/json">{{.TagsJSON}}</script>
     <script>
         const tabs = document.querySelectorAll('.tab');
+        const openAddItemButton = document.getElementById('open-add-item');
+        const closeAddItemButton = document.getElementById('close-add-item');
+        const addItemDrawer = document.getElementById('add-item-drawer');
         const sections = {
             items: document.getElementById('items-section'),
             locations: document.getElementById('locations-section')
@@ -117,6 +179,8 @@
         const imageModal = document.getElementById('image-modal');
         const imageModalImage = document.getElementById('image-modal-image');
         const imageModalCaption = document.getElementById('image-modal-caption');
+        const photoInput = document.getElementById('item-photo');
+        const photoPreview = document.getElementById('photo-preview');
 
         function openImageModal(src, alt) {
             if (!imageModal || !imageModalImage) return;
@@ -143,6 +207,64 @@
                 imageModalImage.alt = '';
                 imageModalCaption.textContent = '';
             }, 220);
+        }
+
+        function openAddItemDrawer() {
+            if (!addItemDrawer) return;
+            addItemDrawer.hidden = false;
+            requestAnimationFrame(() => addItemDrawer.classList.add('is-open'));
+            document.body.classList.add('modal-open');
+            openAddItemButton?.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeAddItemDrawer() {
+            if (!addItemDrawer) return;
+            addItemDrawer.classList.remove('is-open');
+            document.body.classList.remove('modal-open');
+            openAddItemButton?.setAttribute('aria-expanded', 'false');
+            setTimeout(() => {
+                if (addItemDrawer.classList.contains('is-open')) {
+                    return;
+                }
+                addItemDrawer.hidden = true;
+            }, 220);
+        }
+
+        openAddItemButton?.addEventListener('click', () => {
+            if (addItemDrawer?.hidden) {
+                openAddItemDrawer();
+            } else {
+                closeAddItemDrawer();
+            }
+        });
+
+        closeAddItemButton?.addEventListener('click', closeAddItemDrawer);
+        addItemDrawer?.addEventListener('click', (event) => {
+            if (event.target === addItemDrawer) {
+                closeAddItemDrawer();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && addItemDrawer && !addItemDrawer.hidden) {
+                closeAddItemDrawer();
+            }
+        });
+
+        photoInput?.addEventListener('change', (event) => {
+            const [file] = event.target.files || [];
+            if (!file || !photoPreview) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                photoPreview.innerHTML = `<img src="${reader.result}" alt="Vorschau" />`;
+                photoPreview.hidden = false;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        if (addItemDrawer && !addItemDrawer.hidden) {
+            openAddItemDrawer();
         }
 
         document.querySelectorAll('.gallery-image').forEach((image) => {

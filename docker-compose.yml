@@ -15,6 +15,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
     env_file:
       - .env
+    volumes:
+    - ./web/static/css:/app/static/css
+    - ./web/static/pics:/app/static/pics
+      - uploads_data:/app/static/uploads
     deploy:
       resources:
         limits:
@@ -61,3 +65,4 @@ services:
 
 volumes:
   mysql_data:
+  uploads_data:
