@@ -8,6 +8,8 @@ import (
 
 	"lagermanager/internal/database"
 	"lagermanager/internal/handlers"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func resolveExistingDir(candidates ...string) string {
@@ -58,6 +60,8 @@ func main() {
 	http.HandleFunc("/", handlers.ListItemsHandler)
 	http.HandleFunc("/modify-item", handlers.ModifyItemHandler)
 	http.HandleFunc("/add-item", handlers.AddItemHandler)
+
+	http.Handle("/metrics", promhttp.Handler())
 
 	log.Println("server works on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
