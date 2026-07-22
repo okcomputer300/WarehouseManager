@@ -1,0 +1,113 @@
+stages:
+  - test
+  - build
+  - scan
+  - release
+
+variables:
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  TRIVY_USERNAME: "$CI_REGISTRY_USER"
+  TRIVY_PASSWORD: "$CI_REGISTRY_PASSWORD"
+  TRIVY_AUTH_URL: "$CI_REGISTRY"
+  TRIVY_CACHE_DIR: ".trivycache/"
+
+# -------------------------------------------------------------------
+# 1. TEST STAGE
+# -------------------------------------------------------------------
+lint-dockerfile:
+  stage: test
+  image: hadolint/hadolint:latest-alpine
+  script:
+    - hadolint --ignore DL3008 server/Dockerfile
+
+test-go:
+  stage: test
+  image: golang:1.25-alpine
+  script:
+    - go fmt ./...
+    - go vet ./...
+    - go test -v ./...
+
+# -------------------------------------------------------------------
+# 2. BUILD STAGE
+# -------------------------------------------------------------------
+build-image:
+  stage: build
+  image: docker:29.5.2
+  services:
+    - docker:29.5.2-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $IMAGE_NAME:$CI_PIPELINE_ID -f server/Dockerfile .
+    - docker push $IMAGE_NAME:$CI_PIPELINE_ID
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "dev"
+
+# -------------------------------------------------------------------
+# 3. SCAN STAGE
+# -------------------------------------------------------------------
+trivy_scan:
+  stage: scan
+  image: 
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  needs:
+    - build-image
+  cache:
+    key: trivy-db-cache
+    paths:
+      - .trivycache/
+  script:
+    - trivy image --exit-code 0 --format template --template "@/contrib/gitlab.tpl" --output gl-container-scanning-report.json $IMAGE_NAME:$CI_PIPELINE_ID
+    - trivy image --exit-code 0 --output gl-container-scanning-report.txt $IMAGE_NAME:$CI_PIPELINE_ID
+    - trivy image --exit-code 1 --severity CRITICAL $IMAGE_NAME:$CI_PIPELINE_ID
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "dev"
+  artifacts:
+    paths:
+      - gl-container-scanning-report.txt
+      - gl-container-scanning-report.json
+    reports:
+      container_scanning: gl-container-scanning-report.json
+    when: always
+
+# -------------------------------------------------------------------
+# 4. RELEASE STAGE
+# -------------------------------------------------------------------
+.release-base:
+  stage: release
+  image: docker:29.5.2
+  services:
+    - docker:29.5.2-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker pull $IMAGE_NAME:$CI_PIPELINE_ID
+
+release-unstable:
+  extends: .release-base
+  script:
+    - docker tag $IMAGE_NAME:$CI_PIPELINE_ID $IMAGE_NAME:unstable
+    - docker push $IMAGE_NAME:unstable
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+
+release-latest:
+  extends: .release-base
+  script:
+    - docker tag $IMAGE_NAME:$CI_PIPELINE_ID $IMAGE_NAME:latest
+    - docker push $IMAGE_NAME:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+release-version:
+  extends: .release-base
+  script:
+    - docker tag $IMAGE_NAME:$CI_PIPELINE_ID $IMAGE_NAME:$CI_COMMIT_TAG
+    - docker push $IMAGE_NAME:$CI_COMMIT_TAG
+  rules:
+    - if: $CI_COMMIT_TAG
