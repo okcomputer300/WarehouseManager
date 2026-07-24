@@ -97,6 +97,10 @@
             <div class="list-section" id="items-section">
                 {{range .Items}}
                 <article class="card item-card" data-name="{{.Name}}" data-location="{{.LocationName}}" data-tag="{{if .TagName.Valid}}{{.TagName.String}}{{end}}">
+                    <form action="/delete-item" method="POST" onsubmit="return confirm('Confirm deleting?');" class="delete-item-form">
+                        <input type="hidden" name="id" value="{{.ID}}">
+                        <button type="submit" class="qty-btn-danger btn-sm" aria-label="Löschen">✕</button>
+                    </form>
                     <div class="card-top">
                         <div class="image-wrap">
                             <img class="gallery-image" src="{{if .HasPhoto}}{{.PhotoPath.String}}{{else}}/static/pics/{{.Name}}.jpg{{end}}" alt="{{.Name}}" role="button" tabindex="0" aria-label="Bild von {{.Name}} vergrößern" onerror="this.style.display='none'; this.parentElement.classList.add('fallback');" />
@@ -113,12 +117,14 @@
                             <button type="button" class="qty-btn plus" data-item-id="{{.ID}}" data-action="increase" data-amount="1" aria-label="Menge erhöhen">+</button>
                         </div>
                         <div class="tag-controls">
-                            {{if .TagName.Valid}}
-                            <span class="badge tag-badge">{{.TagName.String}}</span>
-                            <button type="button" class="tag-action" data-item-id="{{.ID}}" data-action="clear-tag">Entfernen</button>
-                            {{else}}
-                            <button type="button" class="tag-action" data-item-id="{{.ID}}" data-action="tag">Taggen</button>
-                            {{end}}
+                            <div class="tag-wrap">
+                                {{if .TagName.Valid}}
+                                <span class="badge tag-badge">{{.TagName.String}}</span>
+                                <button type="button" class="tag-action" data-item-id="{{.ID}}" data-action="clear-tag">Entfernen</button>
+                                {{else}}
+                                <button type="button" class="tag-action" data-item-id="{{.ID}}" data-action="tag">Taggen</button>
+                                {{end}}
+                            </div>
                         </div>
                     </div>
                     <p class="description">{{if .Description}}{{.Description}}{{else}}Keine Beschreibung vorhanden.{{end}}</p>
@@ -499,7 +505,8 @@
             }
         }
 
-        document.querySelectorAll('.tag-controls').forEach((wrapper) => {
+        document.querySelectorAll('.tag-controls').forEach((container) => {
+            const wrapper = container.querySelector('.tag-wrap');
             const button = wrapper.querySelector('.tag-action');
             if (!button) {
                 return;

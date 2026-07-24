@@ -60,6 +60,7 @@ func main() {
 	http.HandleFunc("/", handlers.ListItemsHandler)
 	http.HandleFunc("/modify-item", handlers.ModifyItemHandler)
 	http.HandleFunc("/add-item", handlers.AddItemHandler)
+	http.HandleFunc("/delete-item", handlers.DeleteItemHandler)
 
 	http.Handle("/metrics", promhttp.Handler())
 

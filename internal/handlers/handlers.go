@@ -343,7 +343,7 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
 		defer file.Close()
 
 		uploadsDir := filepath.Join(resolveStaticDir(), "uploads")
-		if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		if err := os.MkdirAll(uploadsDir, 0777); err != nil {
 			log.Println("Error creating uploads dir:", err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
 			return
@@ -385,4 +385,34 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/?added=1", http.StatusSeeOther)
+}
+
+func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	itemID := r.FormValue("id")
+	if itemID == "" {
+		http.Error(w, "Missing item id", http.StatusBadRequest)
+		return
+	}
+
+	var photoPath sql.NullString
+	_ = database.DB.QueryRow(`SELECT photo_path FROM items WHERE id = ?`, itemID).Scan(&photoPath)
+
+	_, err := database.DB.Exec(`DELETE FROM items WHERE id = ?`, itemID)
+	if err != nil {
+		log.Println("Error deleting item:", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if photoPath.Valid && photoPath.String != "" {
+		localPath := filepath.Join(resolveStaticDir(), filepath.Clean(photoPath.String[len("/static/"):]))
+		_ = os.Remove(localPath)
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
