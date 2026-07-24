@@ -62,6 +62,6 @@ INSERT INTO items (name, location_id, amount, description, tag_id) VALUES
 ('Hardware SMS Gateway', 2, 15, 'SMS gateway', NULL),
 ('Toner Cartridge', 2, 10, 'cartridge für drucker', NULL),
 ('AKCP sensorprobe+', 2, 10, 'cooles hardware (vielleicht)', NULL),
-('CAT Kabel', 6, 30, 'CAT Kabele verschiedene lange', NULL),
-('Netzteil', 6, 20, 'viele schwarze kabele', NULL),
-('Werkzeugkasten', 6, 1, 'bob builder 3', NULL);
+('CAT Kabel', 7, 30, 'CAT Kabele verschiedene lange', NULL),
+('Netzteil', 7, 20, 'viele schwarze kabele', NULL),
+('Werkzeugkasten', 7, 1, 'bob builder 3', NULL);
