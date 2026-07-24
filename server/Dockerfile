@@ -23,6 +23,7 @@ COPY --from=builder /app/server .
 
 COPY --from=builder /app/web/templates ./templates
 COPY --from=builder /app/web/static ./static
+COPY --from=builder /app/migrations ./migrations
 
 RUN chown -R appuser:appuser /app
 USER appuser
