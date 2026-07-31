@@ -19,6 +19,9 @@ lint-dockerfile:
   image: hadolint/hadolint:latest-alpine
   script:
     - hadolint --ignore DL3008 server/Dockerfile
+  rules:
+    - changes:
+        - "server/Dockerfile"
 
 test-go:
   stage: test
